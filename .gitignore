@@ -1,0 +1,53 @@
+### Build output ###
+/target/
+build/
+out/
+
+### Maven ###
+.mvn/wrapper/maven-wrapper.jar
+.mvn/timing.properties
+
+### Gradle ###
+.gradle/
+!gradle/wrapper/gradle-wrapper.jar
+
+### IDEs ###
+# IntelliJ IDEA
+.idea/
+*.iml
+
+# Eclipse / STS
+.project
+.classpath
+.settings/
+
+# VS Code
+.vscode/
+
+### Logs ###
+*.log
+
+### OS files ###
+.DS_Store
+Thumbs.db
+
+### Environment & secrets ###
+.env
+.env.*
+application-local.yml
+application-local.properties
+application-dev.yml
+application-dev.properties
+application-prod.yml
+application-prod.properties
+
+### Test & coverage ###
+/coverage/
+*.exec
+
+### Temporary files ###
+*.tmp
+*.swp
+
+### Docker ###
+docker-compose.override.yml
