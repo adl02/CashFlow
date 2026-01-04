@@ -28,7 +28,10 @@ public interface ExpenseRepository extends JpaRepository<Expense, Long> {
     );
 
     @Query("""
-            SELECT new CategorySummaryDTO(e.categoryType,SUM(e.amount))
+            SELECT new com.h2k.Expense.Tracker.dto.CategorySummaryDTO(
+                e.categoryType,
+                SUM(e.amount)
+            )
             FROM Expense e
             WHERE e.expenseDate BETWEEN :startDate AND :endDate
             GROUP BY e.categoryType
