@@ -33,9 +33,9 @@ public class ExpenseController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteExpense(@PathVariable Long id) {
-        expenseService.deleteExpense(id);
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<String> deleteExpense(@PathVariable Long id) {
+        String message=expenseService.deleteExpense(id);
+        return ResponseEntity.ok(message);
     }
 
     @GetMapping("/category-summary")

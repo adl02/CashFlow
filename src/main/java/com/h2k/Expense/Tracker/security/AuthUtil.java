@@ -40,7 +40,7 @@ public class AuthUtil {
         return claims.getSubject();
     }
 
-    public static User getCurrentUser() {
+    public User getCurrentUser() {
         return (User) SecurityContextHolder
                 .getContext()
                 .getAuthentication()

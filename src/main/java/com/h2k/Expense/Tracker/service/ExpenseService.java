@@ -22,9 +22,7 @@ public class ExpenseService {
     private final AuthUtil authUtil;
 
     public ExpenseListResponseDto getAllExpenses() {
-
         User currentUser = authUtil.getCurrentUser();
-
         List<ExpenseResponseDto> expenses =
                 expenseRepository.findByUserId(currentUser.getId())
                         .stream()
@@ -39,9 +37,7 @@ public class ExpenseService {
     }
 
     public ExpenseResponseDto addExpense(ExpenseRequestDto expenseRequestDto) {
-
         User currentUser = authUtil.getCurrentUser();
-
         Expense expense = Expense.builder()
                 .title(expenseRequestDto.getTitle())
                 .amount(expenseRequestDto.getAmount())
@@ -55,7 +51,10 @@ public class ExpenseService {
     }
 
     public ExpenseResponseDto updateExpense(Long id, ExpenseRequestDto expenseRequestDto) {
-        Expense expense = expenseRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Expenses not found with this id : " + id));
+        User currentUser = authUtil.getCurrentUser();
+        Expense expense = expenseRepository.findByIdAndUserId(id,currentUser.getId()).orElseThrow(() ->
+                new IllegalArgumentException("Unauthorized or Expense not found")
+        );
         modelMapper.map(expenseRequestDto, expense);
         expense.setModifiedAt(LocalDate.now());
         expense = expenseRepository.save(expense);
@@ -63,28 +62,33 @@ public class ExpenseService {
     }
 
 
-    public void deleteExpense(Long id) {
-        Expense expense = expenseRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Expenses not found with this id : " + id));
-        expenseRepository.deleteById(id);
+    public String deleteExpense(Long id) {
+        User currentUser = authUtil.getCurrentUser();
+        Expense expense = expenseRepository.findByIdAndUserId(id,currentUser.getId()).orElseThrow(() ->
+                new IllegalArgumentException("Unauthorized or Expense not found")
+        );
+        expenseRepository.delete(expense);
+        return "Item deleted successfully";
     }
 
     public List<CategorySummaryDTO> getByCategories() {
-        return expenseRepository.findCategorySummary();
+        User currentUser = authUtil.getCurrentUser();
+        return expenseRepository.findCategorySummaryByUser(currentUser.getId());
     }
 
     public MonthlySummaryDTO getMonthlySummary(int month, int year) {
-
+        User currentUser = authUtil.getCurrentUser();
         LocalDate startDate = LocalDate.of(year, month, 1);
         LocalDate endDate = startDate.withDayOfMonth(startDate.lengthOfMonth());
 
-        BigDecimal totalExpense = expenseRepository.findTotalMonthlyExpense(startDate, endDate);
+        BigDecimal totalExpense = expenseRepository.findTotalMonthlyExpenseByUser(startDate, endDate, currentUser.getId());
 
         if (totalExpense == null) {
             totalExpense = BigDecimal.ZERO;
         }
 
         List<CategorySummaryDTO> categoryBreakdown =
-                expenseRepository.findMonthlyCategoryBreakdown(startDate, endDate);
+                expenseRepository.findMonthlyCategoryBreakdownByUser(startDate, endDate, currentUser.getId());
 
         return new MonthlySummaryDTO(
                 month,
