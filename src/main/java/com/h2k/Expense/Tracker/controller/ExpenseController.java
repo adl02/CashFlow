@@ -1,6 +1,7 @@
 package com.h2k.Expense.Tracker.controller;
 
 import com.h2k.Expense.Tracker.dto.*;
+import com.h2k.Expense.Tracker.security.AuthUtil;
 import com.h2k.Expense.Tracker.service.ExpenseService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -15,32 +16,38 @@ import java.util.List;
 public class ExpenseController {
 
     private final ExpenseService expenseService;
+    private final AuthUtil authUtil;
 
 
     @GetMapping
     public ResponseEntity<ExpenseListResponseDto> getAllExpenses() {
-        return ResponseEntity.ok(expenseService.getAllExpenses());
+        Long userId = authUtil.getCurrentUser().getId();
+        return ResponseEntity.ok(expenseService.getAllExpenses(userId));
     }
 
     @PostMapping
     public ResponseEntity<ExpenseResponseDto> addExpense(@RequestBody ExpenseRequestDto expenseRequestDto) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(expenseService.addExpense(expenseRequestDto));
+        Long userId = authUtil.getCurrentUser().getId();
+        return ResponseEntity.status(HttpStatus.CREATED).body(expenseService.addExpense(userId,expenseRequestDto));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ExpenseResponseDto> updateExpense(@PathVariable Long id, @RequestBody ExpenseRequestDto expenseRequestDto) {
-        return ResponseEntity.ok(expenseService.updateExpense(id, expenseRequestDto));
+        Long userId = authUtil.getCurrentUser().getId();
+        return ResponseEntity.ok(expenseService.updateExpense(userId,id, expenseRequestDto));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteExpense(@PathVariable Long id) {
-        String message=expenseService.deleteExpense(id);
+        Long userId = authUtil.getCurrentUser().getId();
+        String message=expenseService.deleteExpense(userId,id);
         return ResponseEntity.ok(message);
     }
 
     @GetMapping("/category-summary")
     public ResponseEntity<List<CategorySummaryDTO>> getByCategories() {
-        return ResponseEntity.ok(expenseService.getByCategories());
+        Long userId = authUtil.getCurrentUser().getId();
+        return ResponseEntity.ok(expenseService.getByCategories(userId));
     }
 
     @GetMapping("/monthly-summary")
@@ -48,7 +55,8 @@ public class ExpenseController {
             @RequestParam int month,
             @RequestParam int year
     ) {
-        return ResponseEntity.ok(expenseService.getMonthlySummary(month,year));
+        Long userId = authUtil.getCurrentUser().getId();
+        return ResponseEntity.ok(expenseService.getMonthlySummary(userId,month,year));
     }
 
 }

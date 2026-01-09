@@ -4,9 +4,10 @@ import com.h2k.Expense.Tracker.dto.*;
 import com.h2k.Expense.Tracker.entity.Expense;
 import com.h2k.Expense.Tracker.entity.User;
 import com.h2k.Expense.Tracker.repository.ExpenseRepository;
-import com.h2k.Expense.Tracker.security.AuthUtil;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -19,76 +20,90 @@ public class ExpenseService {
 
     private final ExpenseRepository expenseRepository;
     private final ModelMapper modelMapper;
-    private final AuthUtil authUtil;
 
-    public ExpenseListResponseDto getAllExpenses() {
-        User currentUser = authUtil.getCurrentUser();
+    @Cacheable(cacheNames = "My-Transactions", key = "#userId")
+    public ExpenseListResponseDto getAllExpenses(Long userId) {
         List<ExpenseResponseDto> expenses =
-                expenseRepository.findByUserId(currentUser.getId())
+                expenseRepository.findByUserId(userId)
                         .stream()
                         .map(expense -> modelMapper.map(expense, ExpenseResponseDto.class))
                         .toList();
 
-        BigDecimal totalIncome = expenseRepository.getTotalIncomeByUser(currentUser.getId());
-        BigDecimal totalExpense = expenseRepository.getTotalExpenseByUser(currentUser.getId());
+        BigDecimal totalIncome = expenseRepository.getTotalIncomeByUser(userId);
+        BigDecimal totalExpense = expenseRepository.getTotalExpenseByUser(userId);
         BigDecimal balance = totalIncome.subtract(totalExpense);
 
         return new ExpenseListResponseDto(totalIncome, totalExpense, balance, expenses);
     }
 
-    public ExpenseResponseDto addExpense(ExpenseRequestDto expenseRequestDto) {
-        User currentUser = authUtil.getCurrentUser();
+    @CacheEvict(
+            cacheNames = {"My-Transactions", "CategorySummary", "MonthlySummary"},
+            allEntries = true
+    )    public ExpenseResponseDto addExpense(Long userId, ExpenseRequestDto expenseRequestDto) {
+        User user = new User();
+        user.setId(userId);
         Expense expense = Expense.builder()
                 .title(expenseRequestDto.getTitle())
                 .amount(expenseRequestDto.getAmount())
                 .expenseDate(LocalDate.now())
                 .categoryType(expenseRequestDto.getCategory())
                 .transactionType(expenseRequestDto.getTransactionType())
-                .user(currentUser)
+                .user(user)
                 .build();
 
         return modelMapper.map(expenseRepository.save(expense), ExpenseResponseDto.class);
     }
 
-    public ExpenseResponseDto updateExpense(Long id, ExpenseRequestDto expenseRequestDto) {
-        User currentUser = authUtil.getCurrentUser();
-        Expense expense = expenseRepository.findByIdAndUserId(id,currentUser.getId()).orElseThrow(() ->
+    @CacheEvict(
+            cacheNames = {"My-Transactions", "CategorySummary", "MonthlySummary"},
+            allEntries = true
+    )
+    public ExpenseResponseDto updateExpense(Long userId, Long id, ExpenseRequestDto expenseRequestDto) {
+        Expense expense = expenseRepository.findByIdAndUserId(id,userId).orElseThrow(() ->
                 new IllegalArgumentException("Unauthorized or Expense not found")
         );
-        modelMapper.map(expenseRequestDto, expense);
+        expense.setTitle(expenseRequestDto.getTitle());
+        expense.setAmount(expenseRequestDto.getAmount());
+        expense.setCategoryType(expenseRequestDto.getCategory());
+        expense.setTransactionType(expenseRequestDto.getTransactionType());
         expense.setModifiedAt(LocalDate.now());
         expense = expenseRepository.save(expense);
         return modelMapper.map(expense, ExpenseResponseDto.class);
     }
 
-
-    public String deleteExpense(Long id) {
-        User currentUser = authUtil.getCurrentUser();
-        Expense expense = expenseRepository.findByIdAndUserId(id,currentUser.getId()).orElseThrow(() ->
+    @CacheEvict(
+            cacheNames = {"My-Transactions", "CategorySummary", "MonthlySummary"},
+            allEntries = true
+    )
+    public String deleteExpense(Long userId, Long id) {
+        Expense expense = expenseRepository.findByIdAndUserId(id,userId).orElseThrow(() ->
                 new IllegalArgumentException("Unauthorized or Expense not found")
         );
         expenseRepository.delete(expense);
         return "Item deleted successfully";
     }
 
-    public List<CategorySummaryDTO> getByCategories() {
-        User currentUser = authUtil.getCurrentUser();
-        return expenseRepository.findCategorySummaryByUser(currentUser.getId());
+    @Cacheable(cacheNames = "CategorySummary", key = "#userId")
+    public List<CategorySummaryDTO> getByCategories(Long userId) {
+        return expenseRepository.findCategorySummaryByUser(userId);
     }
 
-    public MonthlySummaryDTO getMonthlySummary(int month, int year) {
-        User currentUser = authUtil.getCurrentUser();
+    @Cacheable(
+            cacheNames = "MonthlySummary",
+            key = "{#userId, #month, #year}"
+    )
+    public MonthlySummaryDTO getMonthlySummary(Long userId, int month, int year) {
         LocalDate startDate = LocalDate.of(year, month, 1);
         LocalDate endDate = startDate.withDayOfMonth(startDate.lengthOfMonth());
 
-        BigDecimal totalExpense = expenseRepository.findTotalMonthlyExpenseByUser(startDate, endDate, currentUser.getId());
+        BigDecimal totalExpense = expenseRepository.findTotalMonthlyExpenseByUser(startDate, endDate, userId);
 
         if (totalExpense == null) {
             totalExpense = BigDecimal.ZERO;
         }
 
         List<CategorySummaryDTO> categoryBreakdown =
-                expenseRepository.findMonthlyCategoryBreakdownByUser(startDate, endDate, currentUser.getId());
+                expenseRepository.findMonthlyCategoryBreakdownByUser(startDate, endDate, userId);
 
         return new MonthlySummaryDTO(
                 month,

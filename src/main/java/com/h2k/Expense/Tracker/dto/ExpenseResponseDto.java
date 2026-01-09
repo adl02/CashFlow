@@ -6,13 +6,14 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class ExpenseResponseDto {
+public class ExpenseResponseDto implements Serializable {
     private Long id;
     private String title;
     private BigDecimal amount;
